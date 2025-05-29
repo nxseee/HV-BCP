@@ -1,0 +1,47 @@
+name: Generar archivo YAML de Secret desde Vault
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generar-secret-yaml:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout del repositorio
+      uses: actions/checkout@v4
+
+    - name: Instalar Vault CLI
+      uses: hashicorp/setup-vault@v1
+      with:
+        vault-version: '1.15.5'
+
+    - name: Leer secretos desde Vault y generar archivo YAML
+      run: |
+        # Configurar Vault
+        export VAULT_ADDR=${{ secrets.VAULT_ADDR }}
+        export VAULT_TOKEN=${{ secrets.VAULT_TOKEN }}
+
+        # Leer los secretos
+        ORG_ID=$(vault kv get -field=SINGLESTORE_ORG_ID secret/singlestore)
+        GROUP_ID=$(vault kv get -field=SINGLESTORE_WORKSPACE_GROUP_ID secret/singlestore)
+
+        # Codificar en base64
+        ORG_ID_B64=$(echo -n "$ORG_ID" | base64)
+        GROUP_ID_B64=$(echo -n "$GROUP_ID" | base64)
+
+        # Crear archivo YAML
+        cat <<EOF > singlestore-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: singlestore-secret
+  namespace: singlestore-collector
+type: Opaque
+data:
+  SINGLESTORE_ORG_ID: $ORG_ID_B64
+  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64
+EOF
+
+    - name: Mostrar YAML generado
+      run: cat singlestore-secret.yaml
