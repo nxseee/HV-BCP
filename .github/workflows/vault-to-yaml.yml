@@ -11,10 +11,12 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Instalar Vault CLI
-        uses: hashicorp/setup-vault@v1
-        with:
-          vault-version: '1.15.5'
+      - name: Instalar Vault CLI manualmente
+        run: |
+              curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+              echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+              sudo apt-get update && sudo apt-get install vault -y
+
 
       - name: Leer secretos desde Vault y generar archivo YAML
         run: |
