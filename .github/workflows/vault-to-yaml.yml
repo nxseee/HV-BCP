@@ -18,25 +18,20 @@ jobs:
 
       - name: Leer secretos desde Vault y generar archivo YAML
         run: |
-          # Configurar Vault
           export VAULT_ADDR=${{ secrets.VAULT_ADDR }}
           export VAULT_TOKEN=${{ secrets.VAULT_TOKEN }}
 
-          # Leer los secretos
           ORG_ID=$(vault kv get -field=SINGLESTORE_ORG_ID secret/singlestore)
           GROUP_ID=$(vault kv get -field=SINGLESTORE_WORKSPACE_GROUP_ID secret/singlestore)
 
-          # Crear archivo YAML con stringData
-          cat <<EOF > singlestore-secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: singlestore-secret
-  namespace: singlestore-collector
-stringData:
-  SINGLESTORE_ORG_ID: $ORG_ID
-  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID
-EOF
+          echo "apiVersion: v1" > singlestore-secret.yaml
+          echo "kind: Secret" >> singlestore-secret.yaml
+          echo "metadata:" >> singlestore-secret.yaml
+          echo "  name: singlestore-secret" >> singlestore-secret.yaml
+          echo "  namespace: singlestore-collector" >> singlestore-secret.yaml
+          echo "stringData:" >> singlestore-secret.yaml
+          echo "  SINGLESTORE_ORG_ID: $ORG_ID" >> singlestore-secret.yaml
+          echo "  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID" >> singlestore-secret.yaml
 
       - name: Mostrar YAML generado
         run: cat singlestore-secret.yaml
