@@ -24,9 +24,11 @@ jobs:
 
           ORG_ID=$(vault kv get -field=SINGLESTORE_ORG_ID secret/singlestore)
           GROUP_ID=$(vault kv get -field=SINGLESTORE_WORKSPACE_GROUP_ID secret/singlestore)
+          API_KEY=$(vault kv get -field=SINGLESTORE_API_KEY secret/#rutaDesconocida)
 
           ORG_ID_B64=$(echo -n "$ORG_ID" | base64)
           GROUP_ID_B64=$(echo -n "$GROUP_ID" | base64)
+          API_KEY_B64=$(echo -n "$API_KEY" | base64)
 
           echo "apiVersion: v1" > singlestore-secret.yaml
           echo "kind: Secret" >> singlestore-secret.yaml
@@ -36,6 +38,7 @@ jobs:
           echo "data:" >> singlestore-secret.yaml
           echo "  SINGLESTORE_ORG_ID: $ORG_ID_B64" >> singlestore-secret.yaml
           echo "  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64" >> singlestore-secret.yaml
+          echo "  SINGLESTORE_API_KEY: $API_KEY_B64" >> singlestore-secret.yaml
 
       - name: Mostrar YAML generado
         run: cat singlestore-secret.yaml
