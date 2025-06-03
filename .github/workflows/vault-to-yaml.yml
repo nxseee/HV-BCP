@@ -33,7 +33,6 @@ jobs:
           echo "metadata:" >> singlestore-secret.yaml
           echo "  name: singlestore-secret" >> singlestore-secret.yaml
           echo "  namespace: singlestore-collector" >> singlestore-secret.yaml
-          echo "type: Opaque" >> singlestore-secret.yaml
           echo "data:" >> singlestore-secret.yaml
           echo "  SINGLESTORE_ORG_ID: $ORG_ID_B64" >> singlestore-secret.yaml
           echo "  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64" >> singlestore-secret.yaml
