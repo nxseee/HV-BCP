@@ -25,19 +25,22 @@ jobs:
 
       - name: Leer secretos desde HCP Vault y generar archivo YAML (Base64)
         run: |
-          BASE_URL="https://api.cloud.hashicorp.com/secrets/2023-11-28"
-          ORG_ID="09b95cd0-d483-4255-93fb-8e35c1dbfae5"  # reemplaza si tu org ID cambia
-          PROJECT_ID="c2251c51-0cf9-4989-ba00-d9794140dc2b"
-          APP_NAME="sample-app"
+          echo "🔐 Obteniendo token temporal de HCP..."
+          HCP_API_TOKEN=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "client_id=${{ secrets.HCP_CLIENT_ID }}" \
+            --data-urlencode "client_secret=${{ secrets.HCP_CLIENT_SECRET }}" \
+            --data-urlencode "grant_type=client_credentials" \
+            --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r .access_token)
 
-          get_secret() {
-            curl --silent --location "$BASE_URL/organizations/$ORG_ID/projects/$PROJECT_ID/apps/$APP_NAME/secrets/$1" \
-              --header "Authorization: Bearer $HCP_API_TOKEN" | jq -r '.secret.value'
-          }
+          echo "🔍 Leyendo secretos de sample-app en HCP Vault..."
+          RESPONSE=$(curl --silent \
+            --location "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/09b95cd0-d483-4255-93fb-8e35c1dbfae5/projects/c2251c51-0cf9-4989-ba00-d9794140dc2b/apps/sample-app/secrets:open" \
+            --header "Authorization: Bearer $HCP_API_TOKEN")
 
-          ORG_ID=$(get_secret SINGLESTORE_ORG_ID)
-          GROUP_ID=$(get_secret SINGLESTORE_WORKSPACE_GROUP_ID)
-          API_KEY=$(get_secret SINGLESTORE_API_KEY)
+          ORG_ID=$(echo "$RESPONSE" | jq -r '.secrets[] | select(.name=="SINGLESTORE_ORG_ID") | .value')
+          GROUP_ID=$(echo "$RESPONSE" | jq -r '.secrets[] | select(.name=="SINGLESTORE_WORKSPACE_GROUP_ID") | .value')
+          API_KEY=$(echo "$RESPONSE" | jq -r '.secrets[] | select(.name=="SINGLESTORE_API_KEY") | .value')
 
           ORG_ID_B64=$(echo -n "$ORG_ID" | base64)
           GROUP_ID_B64=$(echo -n "$GROUP_ID" | base64)
@@ -52,6 +55,7 @@ jobs:
           echo "  SINGLESTORE_ORG_ID: $ORG_ID_B64" >> singlestore-secret.yaml
           echo "  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64" >> singlestore-secret.yaml
           echo "  SINGLESTORE_API_KEY: $API_KEY_B64" >> singlestore-secret.yaml
+
 
       - name: Mostrar YAML generado
         run: cat singlestore-secret.yaml
