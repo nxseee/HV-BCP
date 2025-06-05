@@ -50,12 +50,7 @@ jobs:
           echo "$VALUE"
           }
 
-
           ORG=$(get_secret SINGLESTORE_ORG_ID)
-          if [[ -z "$ORG" || "$ORG" == "null" ]]; then
-            echo " Error: Secreto SINGLESTORE_ORG_ID vacío o no encontrado."
-            exit 1
-          fi
           GROUP=$(get_secret SINGLESTORE_WORKSPACE_GROUP_ID)
           KEY=$(get_secret SINGLESTORE_API_KEY)
 
