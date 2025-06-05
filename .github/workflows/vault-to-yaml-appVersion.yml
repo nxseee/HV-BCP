@@ -14,19 +14,25 @@ jobs:
       - name: Obtener access token desde HCP Vault (Service Principal)
         id: auth
         run: |
-          TOKEN=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
+          RESPONSE=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
             --header "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "client_id=${{ secrets.HCP_CLIENT_ID }}" \
             --data-urlencode "client_secret=${{ secrets.HCP_CLIENT_SECRET }}" \
             --data-urlencode "grant_type=client_credentials" \
-            --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r '.access_token')
+            --data-urlencode "audience=https://api.hashicorp.cloud")
+
+          echo "🔍 Respuesta del token: $RESPONSE"
+
+          TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
 
           if [[ "$TOKEN" == "null" || -z "$TOKEN" ]]; then
             echo "❌ Error: Token inválido o no obtenido."
             exit 1
           fi
-
+          
+          echo "✅ Token obtenido correctamente (longitud: ${#TOKEN})"
           echo "HCP_API_TOKEN=$TOKEN" >> $GITHUB_ENV
+
 
       - name: Leer secretos desde HCP Vault y generar archivo YAML (Base64)
         run: |
