@@ -49,7 +49,9 @@ jobs:
 
           echo "🧾 Respuesta cruda: $RESPONSE"
 
-          echo "$RESPONSE" | jq -r '.secret.value'
+          # Accede correctamente al valor si es secreto tipo KV (key-value)
+          echo "$RESPONSE" | jq -r '.secret.kv.latest_version.data.value'
+
           }
 
 
