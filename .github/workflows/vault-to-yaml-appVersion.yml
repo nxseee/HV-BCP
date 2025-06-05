@@ -44,16 +44,10 @@ jobs:
           get_secret() {
           echo "🔍 Consultando secreto: $1"
 
-          RESPONSE=$(curl --silent --location "$BASE_URL/organizations/$ORG_ID/projects/$PROJECT_ID/apps/$APP_NAME/secrets/$1" \
-          --header "Authorization: Bearer $HCP_API_TOKEN")
+          VALUE=$(curl --silent --location "$BASE_URL/organizations/$ORG_ID/projects/$PROJECT_ID/apps/$APP_NAME/secrets/$1" \
+          --header "Authorization: Bearer $HCP_API_TOKEN" | jq -r '.secret.value')
 
-          echo "🧾 Respuesta cruda: $RESPONSE"
-
-          # Accede correctamente al valor si es secreto tipo KV (key-value)
-          echo "$RESPONSE" | jq -r '.secret.kv.latest_version.data.value'
-
-          echo "$RESPONSE" | jq 
-
+          echo "$VALUE"
           }
 
 
