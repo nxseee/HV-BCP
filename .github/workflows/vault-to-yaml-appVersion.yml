@@ -21,12 +21,17 @@ jobs:
             --data-urlencode "grant_type=client_credentials" \
             --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r '.access_token')
 
+          if [[ "$TOKEN" == "null" || -z "$TOKEN" ]]; then
+            echo "❌ Error: Token inválido o no obtenido."
+            exit 1
+          fi
+
           echo "HCP_API_TOKEN=$TOKEN" >> $GITHUB_ENV
 
       - name: Leer secretos desde HCP Vault y generar archivo YAML (Base64)
         run: |
           BASE_URL="https://api.cloud.hashicorp.com/secrets/2023-11-28"
-          ORG_ID="09b95cd0-d483-4255-93fb-8e35c1dbfae5"  # reemplaza si tu org ID cambia
+          ORG_ID="09b95cd0-d483-4255-93fb-8e35c1dbfae5"
           PROJECT_ID="c2251c51-0cf9-4989-ba00-d9794140dc2b"
           APP_NAME="sample-app"
 
@@ -35,23 +40,32 @@ jobs:
               --header "Authorization: Bearer $HCP_API_TOKEN" | jq -r '.secret.value'
           }
 
-          ORG_ID=$(get_secret SINGLESTORE_ORG_ID)
-          GROUP_ID=$(get_secret SINGLESTORE_WORKSPACE_GROUP_ID)
-          API_KEY=$(get_secret SINGLESTORE_API_KEY)
+          ORG=$(get_secret SINGLESTORE_ORG_ID)
+          GROUP=$(get_secret SINGLESTORE_WORKSPACE_GROUP_ID)
+          KEY=$(get_secret SINGLESTORE_API_KEY)
 
-          ORG_ID_B64=$(echo -n "$ORG_ID" | base64)
-          GROUP_ID_B64=$(echo -n "$GROUP_ID" | base64)
-          API_KEY_B64=$(echo -n "$API_KEY" | base64)
+          # Validaciones
+          if [[ -z "$ORG" || -z "$GROUP" || -z "$KEY" ]]; then
+            echo "❌ Error: Uno o más secretos están vacíos o no existen."
+            exit 1
+          fi
 
-          echo "apiVersion: v1" > singlestore-secret.yaml
-          echo "kind: Secret" >> singlestore-secret.yaml
-          echo "metadata:" >> singlestore-secret.yaml
-          echo "  name: singlestore-secret" >> singlestore-secret.yaml
-          echo "  namespace: singlestore-collector" >> singlestore-secret.yaml
-          echo "data:" >> singlestore-secret.yaml
-          echo "  SINGLESTORE_ORG_ID: $ORG_ID_B64" >> singlestore-secret.yaml
-          echo "  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64" >> singlestore-secret.yaml
-          echo "  SINGLESTORE_API_KEY: $API_KEY_B64" >> singlestore-secret.yaml
+          ORG_B64=$(echo -n "$ORG" | base64)
+          GROUP_B64=$(echo -n "$GROUP" | base64)
+          KEY_B64=$(echo -n "$KEY" | base64)
+
+          # Crear el archivo YAML
+          cat <<-EOF > singlestore-secret.yaml
+          apiVersion: v1
+          kind: Secret
+          metadata:
+          name: singlestore-secret
+          namespace: singlestore-collector
+           data:
+          SINGLESTORE_ORG_ID: $ORG_B64
+          SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_B64
+          SINGLESTORE_API_KEY: $KEY_B64
+          EOF
 
       - name: Mostrar YAML generado
         run: cat singlestore-secret.yaml
