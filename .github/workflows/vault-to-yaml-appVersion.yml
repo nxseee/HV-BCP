@@ -23,38 +23,19 @@ jobs:
 
           echo "HCP_API_TOKEN=$TOKEN" >> $GITHUB_ENV
 
-      - name: Leer secretos desde HCP Vault y generar archivo YAML (Base64)
+      - name: Leer y mostrar secretos sin procesar
         run: |
-          echo "🔐 Obteniendo token temporal de HCP..."
+          echo " Obteniendo token temporal de HCP..."
           HCP_API_TOKEN=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
-            --header "Content-Type: application/x-www-form-urlencoded" \
-            --data-urlencode "client_id=${{ secrets.HCP_CLIENT_ID }}" \
-            --data-urlencode "client_secret=${{ secrets.HCP_CLIENT_SECRET }}" \
-            --data-urlencode "grant_type=client_credentials" \
-            --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r .access_token)
+          --header "Content-Type: application/x-www-form-urlencoded" \
+          --data-urlencode "client_id=${{ secrets.HCP_CLIENT_ID }}" \
+          --data-urlencode "client_secret=${{ secrets.HCP_CLIENT_SECRET }}" \
+          --data-urlencode "grant_type=client_credentials" \
+          --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r .access_token)
 
-          echo "🔍 Leyendo secretos de sample-app en HCP Vault..."
-          RESPONSE=$(curl --silent \
-            --location "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/09b95cd0-d483-4255-93fb-8e35c1dbfae5/projects/c2251c51-0cf9-4989-ba00-d9794140dc2b/apps/sample-app/secrets:open" \
-            --header "Authorization: Bearer $HCP_API_TOKEN")
-
-          ORG_ID=$(echo "$RESPONSE" | jq -r '.secrets[] | select(.name=="SINGLESTORE_ORG_ID") | .value')
-          GROUP_ID=$(echo "$RESPONSE" | jq -r '.secrets[] | select(.name=="SINGLESTORE_WORKSPACE_GROUP_ID") | .value')
-          API_KEY=$(echo "$RESPONSE" | jq -r '.secrets[] | select(.name=="SINGLESTORE_API_KEY") | .value')
-
-          ORG_ID_B64=$(echo -n "$ORG_ID" | base64)
-          GROUP_ID_B64=$(echo -n "$GROUP_ID" | base64)
-          API_KEY_B64=$(echo -n "$API_KEY" | base64)
-
-          echo "apiVersion: v1" > singlestore-secret.yaml
-          echo "kind: Secret" >> singlestore-secret.yaml
-          echo "metadata:" >> singlestore-secret.yaml
-          echo "  name: singlestore-secret" >> singlestore-secret.yaml
-          echo "  namespace: singlestore-collector" >> singlestore-secret.yaml
-          echo "data:" >> singlestore-secret.yaml
-          echo "  SINGLESTORE_ORG_ID: $ORG_ID_B64" >> singlestore-secret.yaml
-          echo "  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64" >> singlestore-secret.yaml
-          echo "  SINGLESTORE_API_KEY: $API_KEY_B64" >> singlestore-secret.yaml
+          echo "🔍 Obteniendo secretos de sample-app..."
+          curl --location "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/09b95cd0-d483-4255-93fb-8e35c1dbfae5/projects/c2251c51-0cf9-4989-ba00-d9794140dc2b/apps/sample-app/secrets:open" \
+          --header "Authorization: Bearer $HCP_API_TOKEN"
 
 
       - name: Mostrar YAML generado
