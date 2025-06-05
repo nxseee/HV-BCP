@@ -1,4 +1,4 @@
-name: Generar archivo YAML de Secret desde HCP Vault Secrets
+name: Generar archivo YAML de Secret desde HCP Vault
 
 on:
   workflow_dispatch:
@@ -11,38 +11,61 @@ jobs:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Obtener access token desde HCP Vault (Service Principal)
-        id: auth
+      - name: Instalar jq (para procesar JSON)
+        run: sudo apt-get update && sudo apt-get install jq -y
+
+      - name: Leer secretos desde HCP Vault y generar archivo YAML (Base64)
         run: |
-          TOKEN=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
+          set -e
+
+          echo "🔐 Obteniendo token temporal de HCP..."
+          HCP_API_TOKEN=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
             --header "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "client_id=${{ secrets.HCP_CLIENT_ID }}" \
             --data-urlencode "client_secret=${{ secrets.HCP_CLIENT_SECRET }}" \
             --data-urlencode "grant_type=client_credentials" \
-            --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r '.access_token')
+            --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r .access_token)
 
-          echo "HCP_API_TOKEN=$TOKEN" >> $GITHUB_ENV
+          echo "📦 Obteniendo secretos..."
+          response=$(curl --silent --location \
+            "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/${{ secrets.SINGLESTORE_ORG_ID }}/projects/${{ secrets.SINGLESTORE_WORKSPACE_GROUP_ID }}/apps/sample-app/secrets:open" \
+            --header "Authorization: Bearer $HCP_API_TOKEN")
 
-      - name: Leer y mostrar secretos sin procesar
-        run: |
-          echo " Obteniendo token temporal de HCP..."
-          HCP_API_TOKEN=$(curl --silent --location "https://auth.idp.hashicorp.com/oauth2/token" \
-          --header "Content-Type: application/x-www-form-urlencoded" \
-          --data-urlencode "client_id=${{ secrets.HCP_CLIENT_ID }}" \
-          --data-urlencode "client_secret=${{ secrets.HCP_CLIENT_SECRET }}" \
-          --data-urlencode "grant_type=client_credentials" \
-          --data-urlencode "audience=https://api.hashicorp.cloud" | jq -r .access_token)
+          echo "🔍 Respuesta del API (debug):"
+          echo "$response" | jq
 
-          echo "🔍 Obteniendo secretos de sample-app..."
-          curl --location "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/09b95cd0-d483-4255-93fb-8e35c1dbfae5/projects/c2251c51-0cf9-4989-ba00-d9794140dc2b/apps/sample-app/secrets:open" \
-          --header "Authorization: Bearer $HCP_API_TOKEN"
+          ORG_ID=$(echo "$response" | jq -r '.secrets[] | select(.name == "SINGLESTORE_ORG_ID") | .value')
+          GROUP_ID=$(echo "$response" | jq -r '.secrets[] | select(.name == "SINGLESTORE_WORKSPACE_GROUP_ID") | .value')
+          API_KEY=$(echo "$response" | jq -r '.secrets[] | select(.name == "SINGLESTORE_API_KEY") | .value')
 
+          echo "🔐 Secretos obtenidos:"
+          echo "ORG_ID: $ORG_ID"
+          echo "GROUP_ID: $GROUP_ID"
+          echo "API_KEY: $API_KEY"
+
+          # Validar que no estén vacíos
+          if [[ -z "$ORG_ID" || -z "$GROUP_ID" || -z "$API_KEY" ]]; then
+            echo "❌ Uno o más secretos no se pudieron obtener. Verifica los nombres y la app sample-app."
+            exit 1
+          fi
+
+          # Codificar a Base64
+          ORG_ID_B64=$(echo -n "$ORG_ID" | base64)
+          GROUP_ID_B64=$(echo -n "$GROUP_ID" | base64)
+          API_KEY_B64=$(echo -n "$API_KEY" | base64)
+
+          echo "✅ Generando archivo YAML..."
+          cat <<EOF > singlestore-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: singlestore-secret
+  namespace: singlestore-collector
+data:
+  SINGLESTORE_ORG_ID: $ORG_ID_B64
+  SINGLESTORE_WORKSPACE_GROUP_ID: $GROUP_ID_B64
+  SINGLESTORE_API_KEY: $API_KEY_B64
+EOF
 
       - name: Mostrar YAML generado
         run: cat singlestore-secret.yaml
-
-      - name: Guardar YAML como artefacto
-        uses: actions/upload-artifact@v4
-        with:
-          name: singlestore-secret
-          path: singlestore-secret.yaml
