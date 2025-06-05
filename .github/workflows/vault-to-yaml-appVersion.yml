@@ -50,13 +50,14 @@ jobs:
           echo "$VALUE"
           }
 
+
           ORG=$(get_secret SINGLESTORE_ORG_ID)
           GROUP=$(get_secret SINGLESTORE_WORKSPACE_GROUP_ID)
           KEY=$(get_secret SINGLESTORE_API_KEY)
 
           # Validaciones
           if [[ -z "$ORG" || -z "$GROUP" || -z "$KEY" ]]; then
-            echo " Error: Uno o más secretos están vacíos o no existen."
+            echo "❌ Error: Uno o más secretos están vacíos o no existen."
             exit 1
           fi
 
